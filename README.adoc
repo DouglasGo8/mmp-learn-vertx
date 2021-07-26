@@ -1,0 +1,290 @@
+= Learn VERT.x
+
+== Vert.x
+
+#Eclipse Vert.x is a tool-kit for building **reactive** applications over the JVM#
+
+Starter-api
+
+image:https://img.shields.io/badge/vert.x-4.1.1-purple.svg[link="https://vertx.io"]
+
+This application was generated using http://start.vertx.io
+
+== Building
+
+To launch your tests:
+
+[source]
+----
+./mvnw clean test
+----
+
+
+
+To package your application:
+
+[source]
+----
+./mvnw clean package
+----
+
+To run your application:
+
+[source]
+----
+./mvnw clean compile exec:java
+----
+
+== Vertx Maven Plugin
+
+[source, bash]
+----
+mvn io.reactiverse:vertx-maven-plugin:1.0.24:setup \
+    -DprojectGroupId=com.udemy.learn.vertx.async.futures.promises \
+    -DprojectArtifactId=async-futures-promises \
+    -DprojectVersion=1.0-SNAPSHOT \
+    -Dverticle=com.udemy.learn.vertx.async.futures.promises.MainVerticle \
+    -Ddependencies=web,jmx,mongo
+----
+
+== Help
+
+* https://vertx.io/docs/[Vert.x Documentation]
+* https://stackoverflow.com/questions/tagged/vert.x?sort=newest&pageSize=15[Vert.x Stack Overflow]
+* https://groups.google.com/forum/?fromgroups#!forum/vertx[Vert.x User Group]
+* https://gitter.im/eclipse-vertx/vertx-users[Vert.x Gitter]
+* https://vertx.io/[Eclipse Vert.x™ Reactive applications on the JVM]
+* https://vertx.io/get-started/[Get started with Vert.x/]
+* https://start.vertx.io/[Create a new Vert.x application]
+* https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/[AsciiDoc Syntax Quick Reference]
+* https://reactiverse.io/vertx-maven-plugin/#introduction[Vert.x Maven Plugin]
+
+== Vertices
+
+* Verticles are executed on the Event Loop, using multiple event loops (Multi Reactor pattern)
+* An Event Loop must not execute blocking code to guarantee a fast processing of events
+* The vertx will create a communication over the event bus
+
+[source,java]
+----
+class MainVerticle extends AbstractVerticle {
+  @Override
+  void start(final Promise<Void> start) {
+    vertx.vertx(new VertxOptions()
+      .setMaxEventLoopExecuteTime(500).
+      .setMaxEventLoopExecuteUnit(TimeUnit.MILLSECONDS)
+      .setBlockedThreadCheckInverval(1)
+      .setBlockedThreadCheckInvervalUnit(TimeUnit.MILLSECONDS));
+
+    vertx.deployVerticle(new VerticleA(), cb -> {
+      // actions in callback
+
+    });
+    vertx.deployVerticle(new VerticleN(), new DeploymentOptions().setInstances(4));
+  }
+}
+
+class VerticleA extends AbstractVerticle {
+  @Override
+  void start(final Promise<Void> start) {
+    // can be have nested Verticle here
+  }
+}
+----
+
+[source,java]
+----
+class MainVerticle extends AbstractVerticle {
+  @Override
+  void start(final Promise<Void> start) {
+    start.complete();
+    super.vertx.executeBlocking( evt -> {
+      log.info("Executing blocking code");
+      Thread.sleep(5000);
+      event.fail("Force a fail");
+    }, result -> {
+      if (result.succeeded()) {
+        log.info("Hooray");
+      } else {
+        log.info("Error");
+      }
+    });
+  }
+}
+----
+
+== Event Bus
+
+[source,java]
+----
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.DeliveryOptions;
+
+class RequestResponseEventBus extends AbstractVerticle {
+  public static void main(String... args) {
+    var vertx = Vertx.vertx();
+
+    vertx.deployVerticle(new ReqVerticle());
+    vertx.deployVerticle(new RespVerticle());
+  }
+
+  class ReqVerticle extends AbstractVerticle {
+    @Override
+    public static start(final Promise<Void> reqPromise) {
+      reqPromise.complete();
+      var bus = super.eventBus();
+
+      // Publish/Subscribe
+      super.vertx.eventBus().<String>publish(ReqVerticle.class.getName(), "A message");
+
+      // Point-to-Point
+      super.vertx.eventBus().send(ReqVerticle.class.getName(), "Ping");
+
+      // Req/Resp
+      bus.<String>request("my.request.address", "Ping",  cb -> {
+        log.info("Response, {}", cb.result().body());
+      });
+    }
+
+    bus.<JsonArray>request("my.request.address", new JsonObject().put"message", "Ping"));
+  }
+
+  class RespVerticle extends AbstractVerticle {
+    @Override
+    public static void start(final Promise<Void> respPromise) {
+      respPromise.complete();
+
+      // Publish/Subscribe
+      super.vertx.eventBus().<String>consumer(ReqVerticle.class.getName(), message->{
+        log.info("Received: {}", message.body());
+      });
+
+      // Point-to-Point
+      super.vertx.eventBus().<String>consumer(ReqVerticle.class.getName(), message->{
+        log.info("Received: {}", message.body());
+      });
+
+      // Req/Resp
+      super.vertx.eventBus().<String>consumer("my.request.address", cb -> {
+        log.info("Request {}", cb.body());
+        message.reply("Pong");
+      });
+
+      super.vertx.<JsonObject>consumer("my.request.address", cb -> {
+        log.info("Received Message: {}", cb.body());
+        cb.reply(new JsonArray().put(new JsonObject().put("one")));
+      });
+    }
+  }
+
+}
+----
+
+
+== Custom Message Codec
+
+[source,java]
+----
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+class PingPongVerticle extends AbstractVerticle {
+    public static void main(String... args) {
+      var vertx = Vertx.vertx();
+      vertx.deployVerticle(new PingVerticle(), this::errorHandler);
+      vertx.deployVerticle(new PongVerticle(), this::errorHandler);
+    }
+    public Handler<AsyncResult<String>> errorHandler() {
+      return ar -> {
+        if (ar.failed) {
+         log.info(ar.cause());
+        }
+      };
+    }
+
+    class PingVerticle extends AbstractVerticle {
+
+        @Override
+        public void start(final Promise<Void> promise) {
+          //
+          var bus = super.vertx.EventBus();
+          //
+          var ping = new Ping("bla", true);
+          bus.registerCodec(Ping.class, new LocalMessageCodec<>(Ping.class));
+          bus.<Pong>request(PingVerticle.class.getName(), ping, cb -> {
+            if (cb.failed()) {
+              log.info("Ouuch!!");
+              cb.reply(new Pong(0));
+            }
+            log.info("Response. {}", cb.result.body());
+          });
+
+          promise.complete();
+        }
+    }
+    class PongVerticle extends AbstractVerticle {
+        @Override
+        public void start(final Promise<Void> promise) {
+            super.vertx.registerCodec(Pong.class, new LocalMessageCodec<>(Pong.class));
+            super.vertx.eventBus().<Ping>consumer(PingVerticle.class.getName(), message -> {
+              log.info("Received that Message: {}", message.body());
+              message.reply(new Pong(1002));
+            }).exceptionHandler(err->{
+              log.erro("Fail " + err);
+            });
+
+            promise.complete();
+        }
+    }
+
+    @AllArgsConstructor
+    class Ping {
+        @Getter
+        private final String message;
+        @Getter
+        private final boolean enabled;
+    }
+
+    @AllArgsConstructor
+    class Pong {
+      @Getter
+      private final Integer id;
+
+    }
+}
+----
+
+== Using Futures
+
+[source,java]
+----
+import io.vertx.core.Future;class FutureTest {
+  @Test void future(Vertx vertx, VertxTestContext context) {
+    var promise = Promise.<String>promise();
+    vertx.setTimer(500, id->{
+      promise.complete("Message");
+    });
+    promise
+      .map(asString -> {
+         new JsonObject("key", asString);
+      })
+      .onSuccess(ar-> {})
+      .onFailure(ar->{});
+  }
+
+  @Test void coord_futures(Vertx vertx, VertxTestContext context) {
+    vertx.createHttpServer()
+      .requestHandler(r-> log.info(""), r)
+      .listen(10_000)
+      .compose(Future::succeededFuture)
+      .onFailure(ar->{})
+      .onSuccess(ar->{});
+  }
+}
+----

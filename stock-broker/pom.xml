@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <artifactId>mmp-learn-vertx</artifactId>
+    <groupId>com.udemy.learn.vertx</groupId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <groupId>com.udemy.learn.vertx.stock.broker</groupId>
+  <artifactId>stock-broker</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <name>Udemy :: Learn :: Eclipse Vert.x :: Stock Broker</name>
+
+  <properties>
+    <vertx-maven-plugin.version>1.0.24</vertx-maven-plugin.version>
+    <vertx.verticle>com.udemy.learn.vertx.stock.broker.MainVerticle</vertx.verticle>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.reactiverse</groupId>
+        <artifactId>vertx-maven-plugin</artifactId>
+        <version>${vertx-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>vmp</id>
+            <goals>
+              <goal>initialize</goal>
+              <goal>package</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <redeploy>true</redeploy>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>
