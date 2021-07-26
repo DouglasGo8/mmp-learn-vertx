@@ -17,7 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @Log4j2
 @ExtendWith(VertxExtension.class)
-public class AppTest {
+public class AppAssetTest {
 
   @BeforeEach
   void deployThatVerticles(final Vertx vertx, final VertxTestContext testContext) {

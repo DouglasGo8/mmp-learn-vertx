@@ -1,6 +1,7 @@
 package com.udemy.learn.vertx.stock.broker;
 
 import com.udemy.learn.vertx.stock.broker.web.in.AssetsRestApi;
+import com.udemy.learn.vertx.stock.broker.web.in.QuotesRestApi;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
@@ -27,6 +28,7 @@ public class MainVerticle extends AbstractVerticle {
     });
 
     AssetsRestApi.attach(api);
+    QuotesRestApi.attach(api);
 
     super.vertx.createHttpServer().requestHandler(api)
             .exceptionHandler(err -> log.error("HTTP Server Error: ", err))
