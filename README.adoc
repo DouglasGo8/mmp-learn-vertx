@@ -19,6 +19,9 @@ To launch your tests:
 ./mvnw clean test
 ----
 
+== Git Repo from Udemy
+
+https://github.com/danielprinz/vertx-udemy[Git Repo Source]
 
 
 To package your application:
@@ -278,7 +281,8 @@ import io.vertx.core.Future;class FutureTest {
       .onFailure(ar->{});
   }
 
-  @Test void coord_futures(Vertx vertx, VertxTestContext context) {
+@Test
+void coord_futures(Vertx vertx, VertxTestContext context) {
     vertx.createHttpServer()
       .requestHandler(r-> log.info(""), r)
       .listen(10_000)
@@ -286,5 +290,54 @@ import io.vertx.core.Future;class FutureTest {
       .onFailure(ar->{})
       .onSuccess(ar->{});
   }
+}
+----
+
+== Vert.x Config
+
+[source,java]
+----
+import io.vertx.config.ConfigStoreOptions;
+import io.vertx.core.*;
+import io.vertx.core.json.JsonArray;import io.vertx.core.json.JsonObject;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+class MainVerticle extends AbstractVerticle {
+  public static void main(String... args) {
+    var vertx = Vertx.vertx();
+    vertx.exceptionHandler(err::printStackTrace);
+    vertx.deployVerticle(MainVerticle::new)
+      .onFailure(err::printStackTrace)
+      .onSuccess(id -> System.out.prinlnt("ok"), MainVerticle.class.getSimpleName(), id);
+  }
+  @Override
+  public void start(Promise<Void> startPromise) throws Exception {
+    super.vertx.deployVerticle(RestApiVerticle.class.getName(),
+      new DeploymentOptions().setInstances(System.getProperty("cores"))
+    )
+    .onFailure(err::printStackTrace)
+    .onSuccess(id -> {
+      log.info("Done {} - {}", RestApiVerticle.class.getSimpleName(), id);
+    });
+  }
+}
+
+class RestApiVerticle extends AbstractVerticle {
+  @Override public void start(Promise<Void> startPromise)throws Exception {
+
+  }
+}
+
+class ConfigLoader {
+  static Future<BrokerConfig> load(Vertx vertx) {
+    var store = new ConfigStoreOptions().setType("env")
+      .setConfig(new JsonObject().put("keys", new JsonArray()));
+    return null;
+  }
+}
+
+class BrokerConfig {
+
 }
 ----
